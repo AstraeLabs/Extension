@@ -29,7 +29,7 @@
   },
   "browser_specific_settings": {
     "gecko": {
-      "id": "ea40f6e30d364ed2a9e3",
+      "id": "cookie-inspector@extension",
       "strict_min_version": "109.0"
     }
   }
