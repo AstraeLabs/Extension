@@ -33,24 +33,34 @@ jobs:
 
       - name: Read version from manifest
         run: |
-          VERSION=$(jq -r .version "${{ matrix.dir }}/manifest.json")
-          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
-          echo "ZIP_NAME=${{ matrix.slug }}-${VERSION}-chrome.zip" >> "$GITHUB_ENV"
-          echo "XPI_NAME=${{ matrix.slug }}-${VERSION}-firefox.xpi" >> "$GITHUB_ENV"
+          BASE_VERSION=$(jq -r .version "${{ matrix.dir }}/manifest.json")
+          FULL_VERSION="${BASE_VERSION}.${{ github.run_number }}"
+          echo "VERSION=$FULL_VERSION" >> "$GITHUB_ENV"
+          echo "BASE_VERSION=$BASE_VERSION" >> "$GITHUB_ENV"
+          echo "ZIP_NAME=${{ matrix.slug }}-${FULL_VERSION}-chrome.zip" >> "$GITHUB_ENV"
+          echo "XPI_NAME=${{ matrix.slug }}-${FULL_VERSION}-firefox.xpi" >> "$GITHUB_ENV"
+          echo "SIGN_DIR=/tmp/sign-${{ matrix.slug }}" >> "$GITHUB_ENV"
+
+      - name: Prepare versioned source (unique version per run for AMO)
+        run: |
+          rm -rf "$SIGN_DIR"
+          cp -r "${{ matrix.dir }}" "$SIGN_DIR"
+          jq --arg v "$VERSION" '.version = $v' "$SIGN_DIR/manifest.json" > "$SIGN_DIR/manifest.json.tmp" && mv "$SIGN_DIR/manifest.json.tmp" "$SIGN_DIR/manifest.json"
+          grep '"version"' "$SIGN_DIR/manifest.json"
 
       - name: Build Chrome zip
         run: |
-          cd "${{ matrix.dir }}"
-          zip -r "../$ZIP_NAME" . -x '.*'
+          cd "$SIGN_DIR"
+          zip -r "$GITHUB_WORKSPACE/$ZIP_NAME" . -x '.*'
 
       - name: Lint Firefox extension
-        run: web-ext lint --source-dir="${{ matrix.dir }}"
+        run: web-ext lint --source-dir="$SIGN_DIR"
 
       - name: Build + sign Firefox .xpi (AMO, unlisted)
         run: |
           mkdir -p dist-signed
           web-ext sign \
-            --source-dir="${{ matrix.dir }}" \
+            --source-dir="$SIGN_DIR" \
             --artifacts-dir=dist-signed \
             --channel=unlisted \
             --api-key="${{ secrets.AMO_JWT_ISSUER }}" \
@@ -87,8 +97,9 @@ jobs:
           tag_name: latest
           name: Latest build (main)
           body: |
-            Build automatico dal branch `main`.
+            Automatic build from the `main` branch (run #${{ github.run_number }}).
             Commit: ${{ github.sha }}
-            Contiene gli zip Chrome e gli .xpi Firefox firmati (canale unlisted) di CookieInspector e StreamDetector.
+            Contains the Chrome zips and the signed Firefox .xpi files (unlisted channel) for CookieInspector and StreamDetector.
+            Note: the version inside the artifacts is `<manifest-version>.<run_number>` to guarantee uniqueness on AMO (e.g. 1.0.0.5).
           files: release-files/*
           make_latest: true
