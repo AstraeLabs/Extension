@@ -1,0 +1,36 @@
+{
+  "manifest_version": 3,
+  "name": "Cookie Inspector",
+  "version": "2.1",
+  "description": "",
+  "permissions": [
+    "cookies",
+    "activeTab",
+    "tabs",
+    "clipboardWrite",
+    "scripting"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Cookie Inspector",
+    "default_icon": {
+      "16":  "icons/icon16.png",
+      "48":  "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16":  "icons/icon16.png",
+    "48":  "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "{b3f0c1a2-7d4e-4f8b-9c15-20055583aa01}",
+      "strict_min_version": "109.0"
+    }
+  }
+}

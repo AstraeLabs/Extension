@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="popup.css" />
+  <title>VibraVid Stream Detector</title>
+</head>
+<body>
+  <header>
+    <div class="title">VibraVid <span>Stream Detector</span></div>
+    <button id="clear" class="ghost" title="Svuota la lista">Svuota</button>
+  </header>
+
+  <section class="settings">
+    <label class="field">
+      <span>Comando</span>
+      <select id="launcher">
+        <option value="python">python manual.py</option>
+        <option value="exe">VibraVid.exe</option>
+        <option value="bare">VibraVid</option>
+      </select>
+    </label>
+    <label class="field">
+      <span>Container</span>
+      <select id="extension">
+        <option value="">auto</option>
+        <option value="mkv">mkv</option>
+        <option value="mp4">mp4</option>
+      </select>
+    </label>
+    <label class="field check">
+      <input type="checkbox" id="includeCookie" />
+      <span>Includi Cookie</span>
+    </label>
+  </section>
+
+  <main id="list"></main>
+
+  <div id="empty" class="empty hidden">
+    Nessuno stream rilevato.<br />
+    Avvia la riproduzione del video, poi riapri questo pannello.
+  </div>
+
+  <script src="lib.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

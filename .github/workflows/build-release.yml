@@ -1,0 +1,94 @@
+name: Build and Release Extensions
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - dir: CookieInspector
+            slug: cookie-inspector
+          - dir: StreamDetector
+            slug: stream-detector
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install web-ext
+        run: npm install -g web-ext
+
+      - name: Read version from manifest
+        run: |
+          VERSION=$(jq -r .version "${{ matrix.dir }}/manifest.json")
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "ZIP_NAME=${{ matrix.slug }}-${VERSION}-chrome.zip" >> "$GITHUB_ENV"
+          echo "XPI_NAME=${{ matrix.slug }}-${VERSION}-firefox.xpi" >> "$GITHUB_ENV"
+
+      - name: Build Chrome zip
+        run: |
+          cd "${{ matrix.dir }}"
+          zip -r "../$ZIP_NAME" . -x '.*'
+
+      - name: Lint Firefox extension
+        run: web-ext lint --source-dir="${{ matrix.dir }}"
+
+      - name: Build + sign Firefox .xpi (AMO, unlisted)
+        run: |
+          mkdir -p dist-signed
+          web-ext sign \
+            --source-dir="${{ matrix.dir }}" \
+            --artifacts-dir=dist-signed \
+            --channel=unlisted \
+            --api-key="${{ secrets.AMO_JWT_ISSUER }}" \
+            --api-secret="${{ secrets.AMO_JWT_SECRET }}" \
+            --timeout=900000
+          SIGNED=$(ls -t dist-signed/*.xpi | head -n 1)
+          cp "$SIGNED" "$XPI_NAME"
+          ls -lh "$ZIP_NAME" "$XPI_NAME"
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.slug }}-files
+          path: |
+            ${{ env.ZIP_NAME }}
+            ${{ env.XPI_NAME }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-files
+          merge-multiple: true
+
+      - name: List files
+        run: ls -lhR release-files
+
+      - name: Publish rolling Release "latest"
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: Latest build (main)
+          body: |
+            Build automatico dal branch `main`.
+            Commit: ${{ github.sha }}
+            Contiene gli zip Chrome e gli .xpi Firefox firmati (canale unlisted) di CookieInspector e StreamDetector.
+          files: release-files/*
+          make_latest: true
