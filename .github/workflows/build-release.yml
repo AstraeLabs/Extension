@@ -91,15 +91,15 @@ jobs:
       - name: List files
         run: ls -lhR release-files
 
+      - name: Set last update date
+        run: echo "LAST_UPDATE=$(date -u +'%Y-%m-%d %H:%M UTC')" >> "$GITHUB_ENV"
+
       - name: Publish rolling Release "latest"
         uses: softprops/action-gh-release@v2
         with:
           tag_name: latest
-          name: Latest build (main)
+          name: init
           body: |
-            Automatic build from the `main` branch (run #${{ github.run_number }}).
-            Commit: ${{ github.sha }}
-            Contains the Chrome zips and the signed Firefox .xpi files (unlisted channel) for CookieInspector and StreamDetector.
-            Note: the version inside the artifacts is `<manifest-version>.<run_number>` to guarantee uniqueness on AMO (e.g. 1.0.0.5).
+            Last update: ${{ env.LAST_UPDATE }}
           files: release-files/*
           make_latest: true
