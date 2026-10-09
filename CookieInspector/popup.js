@@ -73,7 +73,14 @@ async function fetchLocalStorage(tabId) {
         const store = window.localStorage;
         for (let i = 0; i < store.length; i++) {
           const k = store.key(i);
-          if (k !== null) out[k] = store.getItem(k);
+          if (k === null) continue;
+          const raw = store.getItem(k);
+          const t = raw === null ? '' : raw.trim();
+          let val = raw;
+          if (t.startsWith('{') || t.startsWith('[')) {
+            try { val = JSON.parse(t); } catch {}
+          }
+          out[k] = val;
         }
       } catch (e) {
         return { __error__: (e && e.message) || String(e) };
@@ -164,7 +171,9 @@ function renderJson(obj) {
   const lines = entries.map(([k, v], i) => {
     const comma = i < entries.length - 1 ? '<span class="j-comma">,</span>' : '';
     const keyHtml  = `<span class="j-key">"${escHtml(k)}"</span>`;
-    const valHtml  = `<span class="j-str">"${escHtml(v)}"</span>`;
+    const valHtml  = (v !== null && typeof v === 'object')
+      ? `<span class="j-str">${escHtml(JSON.stringify(v, null, 2))}</span>`
+      : `<span class="j-str">"${escHtml(v)}"</span>`;
     return `<div class="j-entry">&nbsp;&nbsp;${keyHtml}<span class="j-brace">:</span>&nbsp;${valHtml}${comma}</div>`;
   });
 
@@ -207,6 +216,21 @@ function setLoading(btn, on, idleHtml) {
     : idleHtml;
 }
 
+// Keeps entries whose key or value matches q; nested objects are pruned down to the matching branches.
+function pruneMatches(node, q) {
+  if (node === null || typeof node !== 'object') {
+    return String(node).toLowerCase().includes(q) ? node : undefined;
+  }
+  const out = Array.isArray(node) ? [] : {};
+  for (const [k, v] of Object.entries(node)) {
+    const keyHit = k.toLowerCase().includes(q);
+    const sub = (v !== null && typeof v === 'object') ? (keyHit ? v : pruneMatches(v, q)) : (keyHit || String(v).toLowerCase().includes(q) ? v : undefined);
+    if (sub === undefined) continue;
+    if (Array.isArray(out)) out.push(sub); else out[k] = sub;
+  }
+  return Object.keys(out).length ? out : undefined;
+}
+
 function applyFilter() {
   const q = filterIn.value.trim().toLowerCase();
   filterClr.style.display = q ? 'block' : 'none';
@@ -214,9 +238,10 @@ function applyFilter() {
   const keys = Object.keys(currentObj);
   const shown = {};
   for (const k of keys) {
-    if (!q || k.toLowerCase().includes(q) || String(currentObj[k]).toLowerCase().includes(q)) {
-      shown[k] = currentObj[k];
-    }
+    if (!q) { shown[k] = currentObj[k]; continue; }
+    const v = currentObj[k];
+    const sub = k.toLowerCase().includes(q) ? v : pruneMatches(v, q);
+    if (sub !== undefined) shown[k] = sub;
   }
 
   currentJson = JSON.stringify(shown, null, 2);
