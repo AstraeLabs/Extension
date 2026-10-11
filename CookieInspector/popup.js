@@ -245,7 +245,7 @@ function applyFilter() {
   }
 
   currentJson = JSON.stringify(shown, null, 2);
-  currentCopy = JSON.stringify(shown);
+  currentCopy = JSON.stringify(shown, null, 4);
   renderJson(shown);
 
   const label = { cookies: 'cookie', storage: 'key', token: 'token' }[currentKind];

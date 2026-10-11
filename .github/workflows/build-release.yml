@@ -94,6 +94,17 @@ jobs:
       - name: Set last update date
         run: echo "LAST_UPDATE=$(date -u +'%Y-%m-%d %H:%M UTC')" >> "$GITHUB_ENV"
 
+      - name: Remove old assets from release "latest"
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view latest --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            gh release view latest --repo "${{ github.repository }}" --json assets -q '.assets[].name' |
+            while read -r a; do
+              gh release delete-asset latest "$a" --repo "${{ github.repository }}" -y
+            done
+          fi
+
       - name: Publish rolling Release "latest"
         uses: softprops/action-gh-release@v2
         with:
