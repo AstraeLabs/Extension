@@ -121,8 +121,26 @@ async function fetchSessionToken(tabId) {
       };
 
       const ls = window.localStorage;
+
+      // Priority: check DTCI-DISNEYPLUS.WEB-PROD.token first for Disney+
+      const disneyTokenKey = 'DTCI-DISNEYPLUS.WEB-PROD.token';
+      const disneyTokenVal = ls.getItem(disneyTokenKey);
+      if (disneyTokenVal) {
+        const s = disneyTokenVal.trim();
+        if (s.startsWith('{') || s.startsWith('[')) {
+          try { visit(JSON.parse(s), 0); } catch {}
+        } else {
+          visit({ [disneyTokenKey]: disneyTokenVal }, 0);
+        }
+        if (found.access_token || found.refresh_token) {
+          return found;
+        }
+      }
+
+      // Fallback: search all other keys (excluding dtoken to avoid wrong token)
       for (let i = 0; i < ls.length; i++) {
         const k = ls.key(i);
+        if (k === disneyTokenKey) continue;
         const v = ls.getItem(k);
         if (v === null) continue;
         const s = v.trim();
